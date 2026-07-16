@@ -1,4 +1,4 @@
--- Heroes Battlegrounds: Inf Dashes + Aimlock
+-- Heroes Battlegrounds: Inf Dashes + Combat Aimlock (BodyGyro Bypass)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -18,7 +18,7 @@ local CurrentTarget = nil
 local heartbeatConnection = nil
 local isMinimized = false
 
--- Lista de Cooldowns de M1, Dashes y Habilidades a borrar
+-- Lista de Cooldowns a borrar
 local foldersToDelete = {
     "DASHCD", "SideDashCounter", "ForwardDashCD", "DashPunchCD",
     "DontAllowBlocking", "RecentSideDash", "TRUECANTSIDEDASH",
@@ -27,7 +27,7 @@ local foldersToDelete = {
     "M1CD", "AttackCD", "SwingCD", "PunchCD", "HitCooldown", "IsAttacking"
 }
 
--- === INTERFAZ GRÁFICA PROFESIONAL ===
+-- === INTERFAZ GRÁFICA ===
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "HeroesBattlegrounds_Premium"
 ScreenGui.ResetOnSpawn = false
@@ -35,12 +35,11 @@ ScreenGui.ResetOnSpawn = false
 local success, err = pcall(function() ScreenGui.Parent = CoreGui end)
 if not success then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
 
--- Marco Principal (Estilo Acabado Profesional Oscuro)
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0, 280, 0, 270)
 MainFrame.Position = UDim2.new(0.1, 0, 0.2, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25) -- Fondo más oscuro
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Draggable = true 
@@ -49,27 +48,24 @@ MainFrame.Parent = ScreenGui
 
 Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
 
--- Borde sutil elegante para el marco principal
 local UIStroke = Instance.new("UIStroke")
 UIStroke.Thickness = 1
 UIStroke.Color = Color3.fromRGB(45, 45, 55)
 UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 UIStroke.Parent = MainFrame
 
--- Título
 local Title = Instance.new("TextLabel")
 Title.Name = "Title"
 Title.Size = UDim2.new(1, -75, 0, 45)
 Title.Position = UDim2.new(0, 14, 0, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "Heroes BG: Inf Dashes + Aimlock"
+Title.Text = "Heroes BG: Combat Aim + Dashes"
 Title.TextColor3 = Color3.fromRGB(240, 240, 245)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 13
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = MainFrame
 
--- Botón Cerrar (X) - Estilizado plano
 local CloseButton = Instance.new("TextButton")
 CloseButton.Name = "CloseButton"
 CloseButton.Size = UDim2.new(0, 24, 0, 24)
@@ -82,7 +78,6 @@ CloseButton.TextSize = 16
 CloseButton.Parent = MainFrame
 Instance.new("UICorner", CloseButton).CornerRadius = UDim.new(0, 6)
 
--- Botón Minimizar (-) - Estilizado plano
 local MinimizeButton = Instance.new("TextButton")
 MinimizeButton.Name = "MinimizeButton"
 MinimizeButton.Size = UDim2.new(0, 24, 0, 24)
@@ -95,12 +90,6 @@ MinimizeButton.TextSize = 16
 MinimizeButton.Parent = MainFrame
 Instance.new("UICorner", MinimizeButton).CornerRadius = UDim.new(0, 6)
 
-local MinimizeStroke = Instance.new("UIStroke")
-MinimizeStroke.Thickness = 1
-MinimizeStroke.Color = Color3.fromRGB(60, 60, 65)
-MinimizeStroke.Parent = MinimizeButton
-
--- Contenedor de Elementos
 local ContentFrame = Instance.new("Frame")
 ContentFrame.Name = "ContentFrame"
 ContentFrame.Size = UDim2.new(1, 0, 1, -45)
@@ -108,7 +97,6 @@ ContentFrame.Position = UDim2.new(0, 0, 0, 45)
 ContentFrame.BackgroundTransparency = 1
 ContentFrame.Parent = MainFrame
 
--- 1. Indicador de Objetivo Actual
 local TargetIndicator = Instance.new("TextLabel")
 TargetIndicator.Size = UDim2.new(1, -28, 0, 28)
 TargetIndicator.Position = UDim2.new(0, 14, 0, 5)
@@ -122,15 +110,14 @@ Instance.new("UICorner", TargetIndicator).CornerRadius = UDim.new(0, 6)
 
 local TargetStroke = Instance.new("UIStroke")
 TargetStroke.Thickness = 1
-TargetStroke.Color = Color3.fromRGB(45, 45, 50)
+TargetStroke.Color = Color3.fromRGB(120, 40, 40)
 TargetStroke.Parent = TargetIndicator
 
--- 2. Buscador por Nombre (TextBox Estilizado)
 local NameBox = Instance.new("TextBox")
 NameBox.Size = UDim2.new(1, -28, 0, 32)
 NameBox.Position = UDim2.new(0, 14, 0, 42)
 NameBox.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
-NameBox.PlaceholderText = "Write the name of the enemy..."
+NameBox.PlaceholderText = "Write name..."
 NameBox.Text = ""
 NameBox.TextColor3 = Color3.fromRGB(255, 255, 255)
 NameBox.PlaceholderColor3 = Color3.fromRGB(100, 100, 105)
@@ -139,12 +126,6 @@ NameBox.TextSize = 12
 NameBox.Parent = ContentFrame
 Instance.new("UICorner", NameBox).CornerRadius = UDim.new(0, 6)
 
-local BoxStroke = Instance.new("UIStroke")
-BoxStroke.Thickness = 1
-BoxStroke.Color = Color3.fromRGB(40, 40, 45)
-BoxStroke.Parent = NameBox
-
--- 3. Botón Aimlock
 local AimlockButton = Instance.new("TextButton")
 AimlockButton.Size = UDim2.new(1, -28, 0, 36)
 AimlockButton.Position = UDim2.new(0, 14, 0, 84)
@@ -156,7 +137,6 @@ AimlockButton.TextSize = 13
 AimlockButton.Parent = ContentFrame
 Instance.new("UICorner", AimlockButton).CornerRadius = UDim.new(0, 6)
 
--- 4. Botón Cooldown Bypass
 local CooldownButton = Instance.new("TextButton")
 CooldownButton.Size = UDim2.new(1, -28, 0, 36)
 CooldownButton.Position = UDim2.new(0, 14, 0, 128)
@@ -168,7 +148,6 @@ CooldownButton.TextSize = 13
 CooldownButton.Parent = ContentFrame
 Instance.new("UICorner", CooldownButton).CornerRadius = UDim.new(0, 6)
 
--- 5. Crédito Rainbow (Creador)
 local CreditLabel = Instance.new("TextLabel")
 CreditLabel.Size = UDim2.new(1, 0, 0, 25)
 CreditLabel.Position = UDim2.new(0, 0, 1, -25)
@@ -178,14 +157,71 @@ CreditLabel.Font = Enum.Font.GothamBold
 CreditLabel.TextSize = 13
 CreditLabel.Parent = ContentFrame
 
-
--- === LÓGICA DE ACTUALIZACIÓN DEL COLOR RAINBOW ===
+-- Rainbow Credit
 RunService.RenderStepped:Connect(function()
-    local hue = (tick() % 4) / 4
-    local color = Color3.fromHSV(hue, 0.9, 1)
-    CreditLabel.TextColor3 = color
+    CreditLabel.TextColor3 = Color3.fromHSV((tick() % 4) / 4, 0.9, 1)
 end)
 
+-- === LÓGICA DE LIMPIEZA DE GIRO ===
+local function CleanUpGyro()
+    local myChar = LocalPlayer.Character
+    if myChar then
+        local myHRP = myChar:FindFirstChild("HumanoidRootPart")
+        if myHRP then
+            local gyro = myHRP:FindFirstChild("AimGyro")
+            if gyro then gyro:Destroy() end
+        end
+        local myHum = myChar:FindFirstChildOfClass("Humanoid")
+        if myHum then myHum.AutoRotate = true end
+    end
+end
+
+-- === LÓGICA DE OBJETIVO ===
+local function SetTarget(player)
+    CurrentTarget = player
+    if player then
+        TargetIndicator.Text = "Target: " .. player.Name
+        TargetIndicator.TextColor3 = Color3.fromRGB(50, 220, 130)
+        TargetStroke.Color = Color3.fromRGB(40, 120, 70)
+    else
+        TargetIndicator.Text = "Target: None"
+        TargetIndicator.TextColor3 = Color3.fromRGB(240, 90, 90)
+        TargetStroke.Color = Color3.fromRGB(120, 40, 40)
+        CleanUpGyro()
+    end
+end
+
+NameBox.FocusLost:Connect(function(enterPressed)
+    if enterPressed and NameBox.Text ~= "" then
+        local text = string.lower(NameBox.Text)
+        local found = nil
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and string.find(string.lower(p.Name), text) then
+                found = p
+                break
+            end
+        end
+        SetTarget(found)
+    end
+end)
+
+-- Click Derecho para fijar objetivo
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        if CurrentTarget then
+            SetTarget(nil)
+        else
+            local targetPart = Mouse.Target
+            local character = targetPart and targetPart.Parent
+            if character and character:FindFirstChild("Humanoid") and character ~= LocalPlayer.Character then
+                SetTarget(Players:GetPlayerFromCharacter(character))
+            elseif character and character.Parent and character.Parent:FindFirstChild("Humanoid") and character.Parent ~= LocalPlayer.Character then
+                SetTarget(Players:GetPlayerFromCharacter(character.Parent))
+            end
+        end
+    end
+end)
 
 -- === LÓGICA DE COOLDOWN BYPASS ===
 local function removeFolders()
@@ -219,68 +255,7 @@ CooldownButton.MouseButton1Click:Connect(function()
     end
 end)
 
-
--- === LÓGICA DE APUNTADO / AIMLOCK ===
-local function RestaurarAutoRotate()
-    local myChar = LocalPlayer.Character
-    if myChar then
-        local myHum = myChar:FindFirstChildOfClass("Humanoid")
-        if myHum then
-            myHum.AutoRotate = true
-        end
-    end
-end
-
-local function SetTarget(player)
-    CurrentTarget = player
-    if player then
-        TargetIndicator.Text = "Target: " .. player.Name
-        TargetIndicator.TextColor3 = Color3.fromRGB(50, 220, 130)
-        TargetStroke.Color = Color3.fromRGB(40, 120, 70)
-    else
-        TargetIndicator.Text = "Target: None"
-        TargetIndicator.TextColor3 = Color3.fromRGB(240, 90, 90)
-        TargetStroke.Color = Color3.fromRGB(120, 40, 40)
-        RestaurarAutoRotate()
-    end
-end
-
-NameBox.FocusLost:Connect(function(enterPressed)
-    if enterPressed and NameBox.Text ~= "" then
-        local text = string.lower(NameBox.Text)
-        local found = nil
-        for _, p in pairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer and string.find(string.lower(p.Name), text) then
-                found = p
-                break
-            end
-        end
-        SetTarget(found)
-    end
-end)
-
--- Captura de Click Derecho para fijar objetivo
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.UserInputType == Enum.UserInputType.MouseButton2 then -- MOUSE SEGUNDARIO / CLICK DERECHO
-        if CurrentTarget then
-            SetTarget(nil)
-        else
-            local targetPart = Mouse.Target
-            if targetPart and targetPart.Parent then
-                local character = targetPart.Parent
-                if character:FindFirstChild("Humanoid") and character ~= LocalPlayer.Character then
-                    local p = Players:GetPlayerFromCharacter(character)
-                    if p then SetTarget(p) end
-                elseif character.Parent and character.Parent:FindFirstChild("Humanoid") and character.Parent ~= LocalPlayer.Character then
-                    local p = Players:GetPlayerFromCharacter(character.Parent)
-                    if p then SetTarget(p) end
-                end
-            end
-        end
-    end
-end)
-
+-- === BOTÓN AIMLOCK ===
 AimlockButton.MouseButton1Click:Connect(function()
     FollowEnabled = not FollowEnabled
     if FollowEnabled then
@@ -289,12 +264,11 @@ AimlockButton.MouseButton1Click:Connect(function()
     else
         AimlockButton.Text = "Aimlock: OFF"
         AimlockButton.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
-        RestaurarAutoRotate()
+        CleanUpGyro()
     end
 end)
 
-
--- === BUCLE ENFOQUE RETORNADO A STUDS (RENDERSTEPPED) ===
+-- === BUCLE DE ACTUALIZACIÓN DEL GIRO (BODYGYRO SEGURO) ===
 RunService.RenderStepped:Connect(function()
     local myChar = LocalPlayer.Character
     if not myChar then return end
@@ -304,52 +278,61 @@ RunService.RenderStepped:Connect(function()
     
     if FollowEnabled and CurrentTarget and CurrentTarget.Character and myHRP and myHum then
         local enemyChar = CurrentTarget.Character
-        local leftArm = enemyChar:FindFirstChild("LeftHand") or enemyChar:FindFirstChild("Left Arm") or enemyChar:FindFirstChild("LeftLowerArm")
+        local enemyHRP = enemyChar:FindFirstChild("HumanoidRootPart")
         
         local currentState = myHum:GetState()
         local yoIncapacitado = (
             currentState == Enum.HumanoidStateType.Physics or 
             currentState == Enum.HumanoidStateType.FallingDown or 
             currentState == Enum.HumanoidStateType.Ragdoll or
-            myHum.PlatformStand == true
+            myHum.PlatformStand == true or
+            myHum.Health <= 0
         )
         
         if yoIncapacitado then
-            if not myHum.AutoRotate then
-                myHum.AutoRotate = true
-            end
+            CleanUpGyro()
             return
         end
         
-        if leftArm and leftArm:IsA("BasePart") then
-            myHum.AutoRotate = false 
+        if enemyHRP then
+            -- Desactivamos la autorotación por defecto para que no pelee con el Gyro
+            myHum.AutoRotate = false
             
-            local myPosXZ = Vector3.new(myHRP.Position.X, 0, myHRP.Position.Z)
-            local targetPosXZ = Vector3.new(leftArm.Position.X, 0, leftArm.Position.Z)
-            
-            -- CONDICIÓN DE STUDS REINTEGRADA: Solo enfoca si la distancia horizontal es mayor a 5 studs
-            if (targetPosXZ - myPosXZ).Magnitude > 5 then
-                local targetPosition = Vector3.new(leftArm.Position.X, myHRP.Position.Y, leftArm.Position.Z)
-                myHRP.CFrame = CFrame.lookAt(myHRP.Position, targetPosition)
+            -- Buscamos o creamos el BodyGyro en el HumanoidRootPart
+            local gyro = myHRP:FindFirstChild("AimGyro")
+            if not gyro then
+                gyro = Instance.new("BodyGyro")
+                gyro.Name = "AimGyro"
+                -- CLAVE: Solo aplicamos torque en el eje Y (giro horizontal)
+                -- Esto permite que sigas saltando (eje Y libre) y moviéndote perfectamente
+                gyro.maxTorque = Vector3.new(0, 500000, 0) 
+                gyro.P = 30000 -- Fuerza del giro
+                gyro.D = 500   -- Amortiguación para evitar vibración
+                gyro.Parent = myHRP
             end
+            
+            -- Calculamos la dirección hacia el objetivo
+            local lookAtCFrame = CFrame.lookAt(myHRP.Position, Vector3.new(enemyHRP.Position.X, myHRP.Position.Y, enemyHRP.Position.Z))
+            
+            -- Actualizamos la orientación del Gyro
+            gyro.cframe = lookAtCFrame
+        else
+            CleanUpGyro()
         end
     else
-        if myHum and not myHum.AutoRotate then
-            myHum.AutoRotate = true
-        end
+        CleanUpGyro()
     end
 end)
 
-
--- === CONTROLES ADICIONALES DE MENÚ (MINIMIZAR / CERRAR) ===
+-- === MENÚ CONTROLES ===
 MinimizeButton.MouseButton1Click:Connect(function()
     isMinimized = not isMinimized
     if isMinimized then
-        MainFrame:TweenSize(UDim2.new(0, 280, 0, 45), Enum.EasingDirection.Out, Enum.EasingStyle.Quart, 0.2, true)
+        MainFrame:TweenSize(UDim2.new(0, 280, 0, 45), "Out", "Quart", 0.2, true)
         ContentFrame.Visible = false
         MinimizeButton.Text = "+"
     else
-        MainFrame:TweenSize(UDim2.new(0, 280, 0, 270), Enum.EasingDirection.Out, Enum.EasingStyle.Quart, 0.2, true)
+        MainFrame:TweenSize(UDim2.new(0, 280, 0, 270), "Out", "Quart", 0.2, true)
         task.wait(0.1)
         ContentFrame.Visible = true
         MinimizeButton.Text = "-"
@@ -362,5 +345,6 @@ CloseButton.MouseButton1Click:Connect(function()
     if heartbeatConnection then
         heartbeatConnection:Disconnect()
     end
+    CleanUpGyro()
     ScreenGui:Destroy()
 end)
