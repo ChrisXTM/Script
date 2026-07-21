@@ -168,7 +168,7 @@ end
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-    Name = "XTM Combat Suite | Premium Edition",
+    Name = "Heroes Battlegrounds Update Script | Subscribe!!!",
     Icon = 4483362458,
     LoadingTitle = "XTM Systems Loading...",
     LoadingSubtitle = "by @ChrisXTM",
