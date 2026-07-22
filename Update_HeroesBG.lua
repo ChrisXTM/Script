@@ -1,7 +1,7 @@
 --[[
     UNIVERSAL COMBAT HUB (RAYFIELD REMASTERED EDITION)
     UI Aesthetic Upgrade & Integrated Features
-    Original Script by ChrisXTM | Orbit Arc Back Dash Update (Direction & Smoothness Fix)
+    Original Script by ChrisXTM | Orbit Arc Back Dash Update (S-Key Block Fix)
 --]]
 
 --// SERVICES
@@ -494,6 +494,12 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed or UserInputService:GetFocusedTextBox() then return end
     
     if input.KeyCode == Enum.KeyCode.Q and autoBackdashEnabled and not isDashing then
+        -- Cancel auto back-dash if user is holding S (Backwards) or Down Arrow
+        local isPressingS = UserInputService:IsKeyDown(Enum.KeyCode.S) or UserInputService:IsKeyDown(Enum.KeyCode.Down)
+        if isPressingS then
+            return
+        end
+
         local myChar = player.Character or player.CharacterAdded:Wait()
         
         if isCharacterStunned(myChar) then
@@ -524,7 +530,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         
         if targetPart and myHRP and hum then
             local startPos = myHRP.Position
-            local lockedY = startPos.Y -- Keep height strictly grounded
+            local lockedY = startPos.Y
             local targetPos = Vector3.new(targetPart.Position.X, lockedY, targetPart.Position.Z)
             local initialRel = startPos - targetPos
             local currentDistance = initialRel.Magnitude
@@ -554,7 +560,6 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
             
             hum.AutoRotate = false
             
-            -- Increased duration for a smooth, natural dash feel (prevents teleporting/jumping)
             local dashDuration = 0.55
             local startTime = tick()
             
@@ -583,9 +588,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
                     while deltaAngle > math.pi do deltaAngle = deltaAngle - (math.pi * 2) end
                     while deltaAngle < -math.pi do deltaAngle = deltaAngle + (math.pi * 2) end
                     
-                    -- Correct Left / Right Orbit Directions:
-                    -- Pressing A (Left) forces a counter-clockwise/left trajectory.
-                    -- Pressing D (Right) forces a clockwise/right trajectory.
+                    -- Orbit directions according to key input
                     if isPressingA then
                         if deltaAngle < 0 then
                             deltaAngle = deltaAngle + (math.pi * 2)
