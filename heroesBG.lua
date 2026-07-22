@@ -1,350 +1,229 @@
--- Heroes Battlegrounds: Inf Dashes + Combat Aimlock (BodyGyro Bypass)
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local CoreGui = game:GetService("CoreGui")
-local LocalPlayer = Players.LocalPlayer
-local Mouse = LocalPlayer:GetMouse()
+-- ============================================================================
+-- 🔥 HER03S BG: AESTHETIC OUTDATED NOTIFICATION
+-- Created with ❤️ by ChrisXTM
+-- ============================================================================
 
--- Evitar duplicados de la interfaz
-if CoreGui:FindFirstChild("HeroesBattlegrounds_Premium") then
-    CoreGui:FindFirstChild("HeroesBattlegrounds_Premium"):Destroy()
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui")
+local GuiService = game:GetService("GuiService")
+local LocalPlayer = Players.LocalPlayer
+
+-- Eliminar GUI previa si existe
+if CoreGui:FindFirstChild("AestheticOutdatedGui") then
+    CoreGui:FindFirstChild("AestheticOutdatedGui"):Destroy()
 end
 
--- Variables de control
-local FollowEnabled = false
-local CdBypassEnabled = false
-local CurrentTarget = nil
-local heartbeatConnection = nil
-local isMinimized = false
-
--- Lista de Cooldowns a borrar
-local foldersToDelete = {
-    "DASHCD", "SideDashCounter", "ForwardDashCD", "DashPunchCD",
-    "DontAllowBlocking", "RecentSideDash", "TRUECANTSIDEDASH",
-    "CantPunchOnCLIENT", "DownSlamCD", "RecentStun",
-    "RecentStunNoAction", "recentdashok", "RagdollCancelCD",
-    "M1CD", "AttackCD", "SwingCD", "PunchCD", "HitCooldown", "IsAttacking"
+-- === CONFIGURACIÓN VISUAL ===
+local CONFIG = {
+    MainColor = Color3.fromRGB(20, 20, 25), -- Color de fondo principal
+    BorderColor = Color3.fromRGB(45, 45, 55), -- Color del borde
+    AccentColor = Color3.fromRGB(35, 150, 255), -- Color de acento (para elementos extra)
+    TextColor = Color3.fromRGB(245, 245, 250), -- Color de texto principal
+    CloseColor = Color3.fromRGB(220, 70, 70), -- Color rojo moderno para cerrar
+    GetColor = Color3.fromRGB(40, 190, 100), -- Color verde moderno para obtener
+    CornerRadius = UDim.new(0, 14) -- Redondeo de esquinas
 }
 
--- === INTERFAZ GRÁFICA ===
+local TARGET_URL = "https://www.youtube.com/watch?v=4VNgRmvS98Y"
+
+-- === CREAR INTERFAZ ===
+
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "HeroesBattlegrounds_Premium"
+ScreenGui.Name = "AestheticOutdatedGui"
 ScreenGui.ResetOnSpawn = false
+ScreenGui.IgnoreGuiInset = true -- Cubre toda la pantalla incluyendo la barra superior
+ScreenGui.DisplayOrder = 999 -- Asegurar que esté por encima de todo
 
-local success, err = pcall(function() ScreenGui.Parent = CoreGui end)
-if not success then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
-
-local MainFrame = Instance.new("Frame")
-MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 280, 0, 270)
-MainFrame.Position = UDim2.new(0.1, 0, 0.2, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-MainFrame.BorderSizePixel = 0
-MainFrame.Active = true
-MainFrame.Draggable = true 
-MainFrame.ClipsDescendants = true
-MainFrame.Parent = ScreenGui
-
-Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
-
-local UIStroke = Instance.new("UIStroke")
-UIStroke.Thickness = 1
-UIStroke.Color = Color3.fromRGB(45, 45, 55)
-UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-UIStroke.Parent = MainFrame
-
-local Title = Instance.new("TextLabel")
-Title.Name = "Title"
-Title.Size = UDim2.new(1, -75, 0, 45)
-Title.Position = UDim2.new(0, 14, 0, 0)
-Title.BackgroundTransparency = 1
-Title.Text = "Heroes BG: Combat Aim + Dashes"
-Title.TextColor3 = Color3.fromRGB(240, 240, 245)
-Title.Font = Enum.Font.GothamBold
-Title.TextSize = 13
-Title.TextXAlignment = Enum.TextXAlignment.Left
-Title.Parent = MainFrame
-
-local CloseButton = Instance.new("TextButton")
-CloseButton.Name = "CloseButton"
-CloseButton.Size = UDim2.new(0, 24, 0, 24)
-CloseButton.Position = UDim2.new(1, -34, 0, 10)
-CloseButton.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
-CloseButton.Text = "×"
-CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseButton.Font = Enum.Font.GothamBold
-CloseButton.TextSize = 16
-CloseButton.Parent = MainFrame
-Instance.new("UICorner", CloseButton).CornerRadius = UDim.new(0, 6)
-
-local MinimizeButton = Instance.new("TextButton")
-MinimizeButton.Name = "MinimizeButton"
-MinimizeButton.Size = UDim2.new(0, 24, 0, 24)
-MinimizeButton.Position = UDim2.new(1, -64, 0, 10)
-MinimizeButton.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
-MinimizeButton.Text = "-"
-MinimizeButton.TextColor3 = Color3.fromRGB(200, 200, 205)
-MinimizeButton.Font = Enum.Font.GothamBold
-MinimizeButton.TextSize = 16
-MinimizeButton.Parent = MainFrame
-Instance.new("UICorner", MinimizeButton).CornerRadius = UDim.new(0, 6)
-
-local ContentFrame = Instance.new("Frame")
-ContentFrame.Name = "ContentFrame"
-ContentFrame.Size = UDim2.new(1, 0, 1, -45)
-ContentFrame.Position = UDim2.new(0, 0, 0, 45)
-ContentFrame.BackgroundTransparency = 1
-ContentFrame.Parent = MainFrame
-
-local TargetIndicator = Instance.new("TextLabel")
-TargetIndicator.Size = UDim2.new(1, -28, 0, 28)
-TargetIndicator.Position = UDim2.new(0, 14, 0, 5)
-TargetIndicator.BackgroundColor3 = Color3.fromRGB(28, 28, 33)
-TargetIndicator.Text = "Target: None"
-TargetIndicator.TextColor3 = Color3.fromRGB(240, 90, 90)
-TargetIndicator.Font = Enum.Font.GothamBold
-TargetIndicator.TextSize = 12
-TargetIndicator.Parent = ContentFrame
-Instance.new("UICorner", TargetIndicator).CornerRadius = UDim.new(0, 6)
-
-local TargetStroke = Instance.new("UIStroke")
-TargetStroke.Thickness = 1
-TargetStroke.Color = Color3.fromRGB(120, 40, 40)
-TargetStroke.Parent = TargetIndicator
-
-local NameBox = Instance.new("TextBox")
-NameBox.Size = UDim2.new(1, -28, 0, 32)
-NameBox.Position = UDim2.new(0, 14, 0, 42)
-NameBox.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
-NameBox.PlaceholderText = "Write name..."
-NameBox.Text = ""
-NameBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-NameBox.PlaceholderColor3 = Color3.fromRGB(100, 100, 105)
-NameBox.Font = Enum.Font.Gotham
-NameBox.TextSize = 12
-NameBox.Parent = ContentFrame
-Instance.new("UICorner", NameBox).CornerRadius = UDim.new(0, 6)
-
-local AimlockButton = Instance.new("TextButton")
-AimlockButton.Size = UDim2.new(1, -28, 0, 36)
-AimlockButton.Position = UDim2.new(0, 14, 0, 84)
-AimlockButton.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
-AimlockButton.Text = "Aimlock: OFF"
-AimlockButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-AimlockButton.Font = Enum.Font.GothamBold
-AimlockButton.TextSize = 13
-AimlockButton.Parent = ContentFrame
-Instance.new("UICorner", AimlockButton).CornerRadius = UDim.new(0, 6)
-
-local CooldownButton = Instance.new("TextButton")
-CooldownButton.Size = UDim2.new(1, -28, 0, 36)
-CooldownButton.Position = UDim2.new(0, 14, 0, 128)
-CooldownButton.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
-CooldownButton.Text = "Inf Dashes: OFF"
-CooldownButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-CooldownButton.Font = Enum.Font.GothamBold
-CooldownButton.TextSize = 13
-CooldownButton.Parent = ContentFrame
-Instance.new("UICorner", CooldownButton).CornerRadius = UDim.new(0, 6)
-
-local CreditLabel = Instance.new("TextLabel")
-CreditLabel.Size = UDim2.new(1, 0, 0, 25)
-CreditLabel.Position = UDim2.new(0, 0, 1, -25)
-CreditLabel.BackgroundTransparency = 1
-CreditLabel.Text = "Created By ChrisXTM"
-CreditLabel.Font = Enum.Font.GothamBold
-CreditLabel.TextSize = 13
-CreditLabel.Parent = ContentFrame
-
--- Rainbow Credit
-RunService.RenderStepped:Connect(function()
-    CreditLabel.TextColor3 = Color3.fromHSV((tick() % 4) / 4, 0.9, 1)
-end)
-
--- === LÓGICA DE LIMPIEZA DE GIRO ===
-local function CleanUpGyro()
-    local myChar = LocalPlayer.Character
-    if myChar then
-        local myHRP = myChar:FindFirstChild("HumanoidRootPart")
-        if myHRP then
-            local gyro = myHRP:FindFirstChild("AimGyro")
-            if gyro then gyro:Destroy() end
-        end
-        local myHum = myChar:FindFirstChildOfClass("Humanoid")
-        if myHum then myHum.AutoRotate = true end
-    end
+-- Intentar colocar en CoreGui (o PlayerGui como alternativa)
+local success, _ = pcall(function() ScreenGui.Parent = CoreGui end)
+if not success then 
+    ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") 
 end
 
--- === LÓGICA DE OBJETIVO ===
-local function SetTarget(player)
-    CurrentTarget = player
-    if player then
-        TargetIndicator.Text = "Target: " .. player.Name
-        TargetIndicator.TextColor3 = Color3.fromRGB(50, 220, 130)
-        TargetStroke.Color = Color3.fromRGB(40, 120, 70)
-    else
-        TargetIndicator.Text = "Target: None"
-        TargetIndicator.TextColor3 = Color3.fromRGB(240, 90, 90)
-        TargetStroke.Color = Color3.fromRGB(120, 40, 40)
-        CleanUpGyro()
-    end
-end
+-- Contenedor principal de fondo (para el efecto fade-in)
+local BackgroundFrame = Instance.new("Frame")
+BackgroundFrame.Name = "Background"
+BackgroundFrame.Size = UDim2.new(1, 0, 1, 0)
+BackgroundFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+BackgroundFrame.BackgroundTransparency = 1 -- Inicia invisible
+BackgroundFrame.BorderSizePixel = 0
+BackgroundFrame.Active = true -- Bloquea clics al juego
+BackgroundFrame.Parent = ScreenGui
 
-NameBox.FocusLost:Connect(function(enterPressed)
-    if enterPressed and NameBox.Text ~= "" then
-        local text = string.lower(NameBox.Text)
-        local found = nil
-        for _, p in pairs(Players:GetPlayers()) do
-            if p ~= LocalPlayer and string.find(string.lower(p.Name), text) then
-                found = p
-                break
-            end
-        end
-        SetTarget(found)
-    end
-end)
+-- El panel de notificación central
+local MainPanel = Instance.new("Frame")
+MainPanel.Name = "MainPanel"
+MainPanel.Size = UDim2.new(0, 480, 0, 260) -- Tamaño elegante y compacto
+MainPanel.Position = UDim2.new(0.5, 0, 0.5, 0) -- Centrado en pantalla
+MainPanel.AnchorPoint = Vector2.new(0.5, 0.5) -- Punto de anclaje central
+MainPanel.BackgroundColor3 = CONFIG.MainColor
+MainPanel.BorderSizePixel = 0
+MainPanel.ClipsDescendants = true
+MainPanel.Parent = BackgroundFrame
 
--- Click Derecho para fijar objetivo
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.UserInputType == Enum.UserInputType.MouseButton2 then
-        if CurrentTarget then
-            SetTarget(nil)
-        else
-            local targetPart = Mouse.Target
-            local character = targetPart and targetPart.Parent
-            if character and character:FindFirstChild("Humanoid") and character ~= LocalPlayer.Character then
-                SetTarget(Players:GetPlayerFromCharacter(character))
-            elseif character and character.Parent and character.Parent:FindFirstChild("Humanoid") and character.Parent ~= LocalPlayer.Character then
-                SetTarget(Players:GetPlayerFromCharacter(character.Parent))
-            end
-        end
-    end
-end)
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = CONFIG.CornerRadius
+MainCorner.Parent = MainPanel
 
--- === LÓGICA DE COOLDOWN BYPASS ===
-local function removeFolders()
-    local liveFolder = workspace:FindFirstChild("Live")
-    if liveFolder then
-        local targetParent = liveFolder:FindFirstChild(LocalPlayer.Name)
-        if targetParent then
-            for _, folderName in ipairs(foldersToDelete) do
-                local folder = targetParent:FindFirstChild(folderName)
-                if folder then
-                    folder:Destroy()
-                end
-            end
-        end
-    end
-end
+-- Borde/Sombra sutil
+local UIBorder = Instance.new("UIStroke")
+UIBorder.Thickness = 1.5
+UIBorder.Color = CONFIG.BorderColor
+UIBorder.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+UIBorder.Transparency = 0.2
+UIBorder.Parent = MainPanel
 
-CooldownButton.MouseButton1Click:Connect(function()
-    CdBypassEnabled = not CdBypassEnabled
-    if CdBypassEnabled then
-        CooldownButton.BackgroundColor3 = Color3.fromRGB(46, 139, 87)
-        CooldownButton.Text = "Inf Dashes: ON"
-        heartbeatConnection = RunService.Heartbeat:Connect(removeFolders)
-    else
-        CooldownButton.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
-        CooldownButton.Text = "Inf Dashes: OFF"
-        if heartbeatConnection then
-            heartbeatConnection:Disconnect()
-            heartbeatConnection = nil
-        end
-    end
-end)
+-- Línea de acento superior
+local AccentLine = Instance.new("Frame")
+AccentLine.Name = "AccentLine"
+AccentLine.Size = UDim2.new(1, 0, 0, 3)
+AccentLine.Position = UDim2.new(0, 0, 0, 0)
+AccentLine.BackgroundColor3 = CONFIG.AccentColor
+AccentLine.BorderSizePixel = 0
+AccentLine.Parent = MainPanel
 
--- === BOTÓN AIMLOCK ===
-AimlockButton.MouseButton1Click:Connect(function()
-    FollowEnabled = not FollowEnabled
-    if FollowEnabled then
-        AimlockButton.Text = "Aimlock: ON"
-        AimlockButton.BackgroundColor3 = Color3.fromRGB(46, 139, 87)
-    else
-        AimlockButton.Text = "Aimlock: OFF"
-        AimlockButton.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
-        CleanUpGyro()
-    end
-end)
+local AccentCorner = Instance.new("UICorner")
+AccentCorner.CornerRadius = UDim.new(0, 14) -- Redondeo para la línea de acento
+AccentCorner.Parent = AccentLine
 
--- === BUCLE DE ACTUALIZACIÓN DEL GIRO (BODYGYRO SEGURO) ===
-RunService.RenderStepped:Connect(function()
-    local myChar = LocalPlayer.Character
-    if not myChar then return end
+-- Título de la notificación
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Name = "TitleLabel"
+TitleLabel.Size = UDim2.new(1, -40, 0, 40)
+TitleLabel.Position = UDim2.new(0, 20, 0, 20)
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Text = "@ChrisXTM NEWS:"
+TitleLabel.TextColor3 = CONFIG.TextColor
+TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.TextSize = 18
+TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+TitleLabel.Parent = MainPanel
+
+-- Mensaje principal
+local MessageLabel = Instance.new("TextLabel")
+MessageLabel.Name = "MessageLabel"
+MessageLabel.Size = UDim2.new(1, -60, 0, 100)
+MessageLabel.Position = UDim2.new(0, 30, 0, 70)
+MessageLabel.BackgroundTransparency = 1
+MessageLabel.Text = "This script version is Patched.\n\nPlease get the latest update from the official source."
+MessageLabel.TextColor3 = CONFIG.TextColor
+MessageLabel.Font = Enum.Font.Gotham
+MessageLabel.TextSize = 16
+MessageLabel.TextWrapped = true
+MessageLabel.TextXAlignment = Enum.TextXAlignment.Center
+MessageLabel.TextYAlignment = Enum.TextYAlignment.Top
+MessageLabel.LineHeight = 1.3
+MessageLabel.Parent = MainPanel
+
+-- Contenedor de botones
+local ButtonsContainer = Instance.new("Frame")
+ButtonsContainer.Name = "Buttons"
+ButtonsContainer.Size = UDim2.new(1, -60, 0, 50)
+ButtonsContainer.Position = UDim2.new(0, 30, 1, -70)
+ButtonsContainer.BackgroundTransparency = 1
+ButtonsContainer.Parent = MainPanel
+
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.FillDirection = Enum.FillDirection.Horizontal
+UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Padding = UDim.new(0, 20) -- Espacio entre botones
+UIListLayout.Parent = ButtonsContainer
+
+-- === ESTILIZAR BOTONES ===
+
+local function CreateButton(name, text, color, layoutOrder)
+    local Button = Instance.new("TextButton")
+    Button.Name = name
+    Button.Size = UDim2.new(0, 200, 1, 0)
+    Button.BackgroundColor3 = color
+    Button.BorderSizePixel = 0
+    Button.Text = text
+    Button.TextColor3 = CONFIG.TextColor
+    Button.Font = Enum.Font.GothamBold
+    Button.TextSize = 16
+    Button.LayoutOrder = layoutOrder
+    Button.AutoButtonColor = false -- Desactivar efecto por defecto para control manual
+
+    local ButtonCorner = Instance.new("UICorner")
+    ButtonCorner.CornerRadius = UDim.new(0, 10)
+    ButtonCorner.Parent = Button
+
+    -- Efecto de brillo sutil en el borde
+    local ButtonStroke = Instance.new("UIStroke")
+    ButtonStroke.Thickness = 1.5
+    ButtonStroke.Color = color:Lerp(Color3.fromRGB(255, 255, 255), 0.2) -- Color más claro
+    ButtonStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    ButtonStroke.Transparency = 1 -- Inicia invisible
+    ButtonStroke.Parent = Button
+
+    -- === ANIMACIONES DE BOTONES (HOVER) ===
+    local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
     
-    local myHRP = myChar:FindFirstChild("HumanoidRootPart")
-    local myHum = myChar:FindFirstChildOfClass("Humanoid")
+    local hoverScaleTween = TweenService:Create(Button, tweenInfo, {Size = UDim2.new(0, 210, 1, 5)})
+    local normalScaleTween = TweenService:Create(Button, tweenInfo, {Size = UDim2.new(0, 200, 1, 0)})
     
-    if FollowEnabled and CurrentTarget and CurrentTarget.Character and myHRP and myHum then
-        local enemyChar = CurrentTarget.Character
-        local enemyHRP = enemyChar:FindFirstChild("HumanoidRootPart")
-        
-        local currentState = myHum:GetState()
-        local yoIncapacitado = (
-            currentState == Enum.HumanoidStateType.Physics or 
-            currentState == Enum.HumanoidStateType.FallingDown or 
-            currentState == Enum.HumanoidStateType.Ragdoll or
-            myHum.PlatformStand == true or
-            myHum.Health <= 0
-        )
-        
-        if yoIncapacitado then
-            CleanUpGyro()
-            return
-        end
-        
-        if enemyHRP then
-            -- Desactivamos la autorotación por defecto para que no pelee con el Gyro
-            myHum.AutoRotate = false
-            
-            -- Buscamos o creamos el BodyGyro en el HumanoidRootPart
-            local gyro = myHRP:FindFirstChild("AimGyro")
-            if not gyro then
-                gyro = Instance.new("BodyGyro")
-                gyro.Name = "AimGyro"
-                -- CLAVE: Solo aplicamos torque en el eje Y (giro horizontal)
-                -- Esto permite que sigas saltando (eje Y libre) y moviéndote perfectamente
-                gyro.maxTorque = Vector3.new(0, 500000, 0) 
-                gyro.P = 30000 -- Fuerza del giro
-                gyro.D = 500   -- Amortiguación para evitar vibración
-                gyro.Parent = myHRP
-            end
-            
-            -- Calculamos la dirección hacia el objetivo
-            local lookAtCFrame = CFrame.lookAt(myHRP.Position, Vector3.new(enemyHRP.Position.X, myHRP.Position.Y, enemyHRP.Position.Z))
-            
-            -- Actualizamos la orientación del Gyro
-            gyro.cframe = lookAtCFrame
-        else
-            CleanUpGyro()
-        end
-    else
-        CleanUpGyro()
-    end
-end)
+    local hoverStrokeTween = TweenService:Create(ButtonStroke, tweenInfo, {Transparency = 0.5})
+    local normalStrokeTween = TweenService:Create(ButtonStroke, tweenInfo, {Transparency = 1})
 
--- === MENÚ CONTROLES ===
-MinimizeButton.MouseButton1Click:Connect(function()
-    isMinimized = not isMinimized
-    if isMinimized then
-        MainFrame:TweenSize(UDim2.new(0, 280, 0, 45), "Out", "Quart", 0.2, true)
-        ContentFrame.Visible = false
-        MinimizeButton.Text = "+"
-    else
-        MainFrame:TweenSize(UDim2.new(0, 280, 0, 270), "Out", "Quart", 0.2, true)
-        task.wait(0.1)
-        ContentFrame.Visible = true
-        MinimizeButton.Text = "-"
+    Button.MouseEnter:Connect(function()
+        hoverScaleTween:Play()
+        hoverStrokeTween:Play()
+    end)
+    
+    Button.MouseLeave:Connect(function()
+        normalScaleTween:Play()
+        normalStrokeTween:Play()
+    end)
+
+    return Button
+end
+
+-- Crear botón de Cerrar (Rojo)
+local CloseButton = CreateButton("CloseButton", "Close", CONFIG.CloseColor, 1)
+CloseButton.Parent = ButtonsContainer
+
+-- Crear botón de Obtener Script (Verde)
+local GetScriptButton = CreateButton("GetScriptButton", "Get New SCRIPT!!!", CONFIG.GetColor, 2)
+GetScriptButton.Parent = ButtonsContainer
+
+-- === FUNCIONALIDAD DE LOS BOTONES ===
+
+GetScriptButton.MouseButton1Click:Connect(function()
+    -- Copiar al portapapeles si el ejecutor lo soporta
+    if setclipboard then
+        setclipboard(TARGET_URL)
+        -- Pequeña retroalimentación visual al copiar
+        GetScriptButton.Text = "URL Copied!"
+        task.wait(1.5)
+        GetScriptButton.Text = "Get New SCRIPT!!!"
     end
+    -- Intentar abrir el navegador directamente
+    pcall(function()
+        GuiService:OpenBrowserWindow(TARGET_URL)
+    end)
 end)
 
 CloseButton.MouseButton1Click:Connect(function()
-    FollowEnabled = false
-    SetTarget(nil)
-    if heartbeatConnection then
-        heartbeatConnection:Disconnect()
-    end
-    CleanUpGyro()
-    ScreenGui:Destroy()
+    -- Efecto de desaparición suave al cerrar
+    local fadeOutInfo = TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+    
+    local fadeOut = TweenService:Create(BackgroundFrame, fadeOutInfo, {BackgroundTransparency = 1})
+    TweenService:Create(MainPanel, fadeOutInfo, {Size = UDim2.new(0, 0, 0, 0), Position = UDim2.new(0.5, 0, 0.5, 0)}):Play()
+    
+    fadeOut:Play()
+    fadeOut.Completed:Connect(function()
+        ScreenGui:Destroy()
+    end)
 end)
+
+-- === EFECTO DE APARICIÓN (FADE-IN CON ESCALA) ===
+local tweenInfo = TweenInfo.new(1, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+
+-- Iniciar MainPanel más pequeño para el efecto de escala
+MainPanel.Size = UDim2.new(0, 0, 0, 0)
+
+TweenService:Create(BackgroundFrame, TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 0.3}):Play() -- Fondo semitransparente
+TweenService:Create(MainPanel, tweenInfo, {Size = UDim2.new(0, 480, 0, 260)}):Play()
