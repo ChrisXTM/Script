@@ -1,7 +1,7 @@
 --[[
     UNIVERSAL COMBAT HUB (RAYFIELD REMASTERED EDITION)
     UI Aesthetic Upgrade & Integrated Features
-    Original Script by ChrisXTM | UI Redesign
+    Original Script by ChrisXTM | Orbit Arc Back Dash Update (Direction & Smoothness Fix)
 --]]
 
 --// SERVICES
@@ -20,7 +20,7 @@ local selectedBodyPart = "HumanoidRootPart"
 
 -- Back Dash Variables
 local autoBackdashEnabled = false
-local maxDashDistance = 45
+local maxDashDistance = 30
 local isDashing = false
 
 -- Heroes BG Variables
@@ -79,10 +79,6 @@ local function CleanUpGyro()
         local myHum = myChar:FindFirstChildOfClass("Humanoid")
         if myHum then myHum.AutoRotate = true end
     end
-end
-
-local function quadraticBezier(p0, p1, p2, t)
-    return (1 - t)^2 * p0 + 2 * (1 - t) * t * p1 + t^2 * p2
 end
 
 local function getTargetPart(model)
@@ -234,11 +230,16 @@ DashTab:CreateSlider({
     Range = {10, 100},
     Increment = 5,
     Suffix = "Studs",
-    CurrentValue = 45,
+    CurrentValue = 30,
     Flag = "MaxDashDistance",
     Callback = function(Value)
         maxDashDistance = Value
     end,
+})
+
+DashTab:CreateParagraph({
+    Title = "Distance Safety Guide",
+    Content = "• Below 30 Studs: Recommended (Smooth & Accurate)\n• 40 Studs or higher: Dangerous (High Risk / Glitchy)"
 })
 
 -- ==========================================
@@ -487,7 +488,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ==========================================
---  ANIMATED BACK DASH LOGIC (Q KEY)
+--  SMOOTH ACCURATE ORBIT BACK DASH (KEY: Q)
 -- ==========================================
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed or UserInputService:GetFocusedTextBox() then return end
@@ -522,62 +523,29 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         local hum = myChar:FindFirstChildOfClass("Humanoid")
         
         if targetPart and myHRP and hum then
-            local currentDistance = (myHRP.Position - targetPart.Position).Magnitude
-            if currentDistance > maxDashDistance then
+            local startPos = myHRP.Position
+            local lockedY = startPos.Y -- Keep height strictly grounded
+            local targetPos = Vector3.new(targetPart.Position.X, lockedY, targetPart.Position.Z)
+            local initialRel = startPos - targetPos
+            local currentDistance = initialRel.Magnitude
+            
+            if currentDistance > maxDashDistance or currentDistance < 1 then
                 return 
             end
             
             isDashing = true
             
-            local distanceBehind = 4
-            local uCurveOffset = distanceBehind
-            local startPos = myHRP.Position
+            local distanceBehind = 4.5
             
-            local initialTargetCF = targetPart.CFrame
-            local dirToTarget = (initialTargetCF.Position - startPos).Unit
-            
-            local sideVector = Vector3.new(-dirToTarget.Z, 0, dirToTarget.X)
-            if sideVector.Magnitude > 0 then
-                sideVector = sideVector.Unit
-            else
-                sideVector = myHRP.CFrame.RightVector
-            end
-            
+            -- Direction Input Check (A = Left, D = Right)
             local isPressingA = UserInputService:IsKeyDown(Enum.KeyCode.A) or UserInputService:IsKeyDown(Enum.KeyCode.Left)
             local isPressingD = UserInputService:IsKeyDown(Enum.KeyCode.D) or UserInputService:IsKeyDown(Enum.KeyCode.Right)
-            local rightVector = myHRP.CFrame.RightVector
-            
-            if isPressingA then
-                if sideVector:Dot(rightVector) > 0 then
-                    sideVector = -sideVector
-                end
-            elseif isPressingD then
-                if sideVector:Dot(rightVector) < 0 then
-                    sideVector = -sideVector
-                end
-            else
-                local rightDot = rightVector:Dot(dirToTarget)
-                if rightDot < 0 then
-                    sideVector = -sideVector
-                end
-            end
-            
-            local forwardDot = myHRP.CFrame.LookVector:Dot(dirToTarget)
-            local rightDotVal = rightVector:Dot(dirToTarget)
+
             local chosenTrack = frontTrack
-            
             if isPressingA then
                 chosenTrack = leftTrack
             elseif isPressingD then
                 chosenTrack = rightTrack
-            elseif forwardDot > 0.5 then
-                chosenTrack = frontTrack
-            elseif rightDotVal > 0.3 then
-                chosenTrack = rightTrack
-            elseif rightDotVal < -0.3 then
-                chosenTrack = leftTrack
-            else
-                chosenTrack = frontTrack
             end
             
             if chosenTrack then
@@ -586,28 +554,59 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
             
             hum.AutoRotate = false
             
-            local dashDuration = 0.32
+            -- Increased duration for a smooth, natural dash feel (prevents teleporting/jumping)
+            local dashDuration = 0.55
             local startTime = tick()
+            
+            -- Initial player angle relative to the target on XZ plane
+            local startAngle = math.atan2(initialRel.Z, initialRel.X)
             
             local connection
             connection = RunService.RenderStepped:Connect(function()
                 local elapsed = tick() - startTime
                 local progress = math.clamp(elapsed / dashDuration, 0, 1)
                 
-                local easedProgress = 1 - (1 - progress) * (1 - progress)
+                -- Smooth sine easing curve
+                local easedProgress = math.sin(progress * (math.pi / 2))
                 
                 if targetPart and targetPart.Parent and myHRP and myHRP.Parent then
-                    local currentTargetCF = targetPart.CFrame
-                    local currentBehindPos = currentTargetCF.Position - (currentTargetCF.LookVector * distanceBehind)
-                    currentBehindPos = Vector3.new(currentBehindPos.X, myHRP.Position.Y, currentBehindPos.Z)
+                    local currentTargetPos = Vector3.new(targetPart.Position.X, lockedY, targetPart.Position.Z)
+                    local targetLook = targetPart.CFrame.LookVector
                     
-                    local midPoint = (startPos + currentBehindPos) / 2
-                    local controlPoint = midPoint + (sideVector * uCurveOffset)
+                    -- Back vector relative to enemy facing direction
+                    local backVector = -Vector3.new(targetLook.X, 0, targetLook.Z).Unit
+                    local endAngle = math.atan2(backVector.Z, backVector.X)
                     
-                    local calculatedPos = quadraticBezier(startPos, controlPoint, currentBehindPos, easedProgress)
-                    local targetLookPos = Vector3.new(currentTargetCF.Position.X, myHRP.Position.Y, currentTargetCF.Position.Z)
+                    local deltaAngle = endAngle - startAngle
                     
-                    myHRP.CFrame = CFrame.lookAt(calculatedPos, targetLookPos)
+                    -- Normalize angle range between -pi and pi
+                    while deltaAngle > math.pi do deltaAngle = deltaAngle - (math.pi * 2) end
+                    while deltaAngle < -math.pi do deltaAngle = deltaAngle + (math.pi * 2) end
+                    
+                    -- Correct Left / Right Orbit Directions:
+                    -- Pressing A (Left) forces a counter-clockwise/left trajectory.
+                    -- Pressing D (Right) forces a clockwise/right trajectory.
+                    if isPressingA then
+                        if deltaAngle < 0 then
+                            deltaAngle = deltaAngle + (math.pi * 2)
+                        end
+                    elseif isPressingD then
+                        if deltaAngle > 0 then
+                            deltaAngle = deltaAngle - (math.pi * 2)
+                        end
+                    end
+                    
+                    -- Calculate current angle & radius
+                    local currentAngle = startAngle + (deltaAngle * easedProgress)
+                    local currentRadius = currentDistance + ((distanceBehind - currentDistance) * easedProgress)
+                    
+                    -- Compute position on arc
+                    local offsetX = math.cos(currentAngle) * currentRadius
+                    local offsetZ = math.sin(currentAngle) * currentRadius
+                    local calculatedPos = currentTargetPos + Vector3.new(offsetX, 0, offsetZ)
+                    
+                    -- Update CFrame facing the opponent, keeping height strictly locked
+                    myHRP.CFrame = CFrame.lookAt(calculatedPos, currentTargetPos)
                 end
                 
                 if progress >= 1 or isCharacterStunned(myChar) then
