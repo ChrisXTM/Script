@@ -1,13 +1,182 @@
 --[[
     UNIVERSAL COMBAT HUB (RAYFIELD REMASTERED EDITION)
     UI Aesthetic Upgrade & Integrated Features
-    Original Script by ChrisXTM | Orbit Arc Back Dash Update (S-Key Block Fix)
+    Original Script by ChrisXTM | Orbit Arc Back Dash Update
 --]]
 
---// SERVICES
-local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
+--// STRICT YOUTUBE VERIFICATION SYSTEM
+local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+
+local YouTubeChannelURL = "https://www.youtube.com/@ChrisXTM?sub_confirmation=1"
+
+-- Create UI
+local VerifyGui = Instance.new("ScreenGui")
+VerifyGui.Name = "XTM_YouTube_Verify"
+VerifyGui.ResetOnSpawn = false
+
+if gethui then
+    VerifyGui.Parent = gethui()
+elseif syn and syn.protect_gui then
+    syn.protect_gui(VerifyGui)
+    VerifyGui.Parent = CoreGui
+else
+    VerifyGui.Parent = CoreGui
+end
+
+-- Main Window (Rayfield Dark Aesthetic)
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 420, 0, 260)
+MainFrame.Position = UDim2.new(0.5, -210, 0.5, -130)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+MainFrame.BorderSizePixel = 0
+MainFrame.Parent = VerifyGui
+
+local Corner = Instance.new("UICorner")
+Corner.CornerRadius = UDim.new(0, 8)
+Corner.Parent = MainFrame
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 40)
+Title.BackgroundTransparency = 1
+Title.Text = " VERIFICATION REQUIRED "
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 20
+Title.Font = Enum.Font.GothamBold
+Title.Parent = MainFrame
+
+local Subtitle = Instance.new("TextLabel")
+Subtitle.Size = UDim2.new(1, -40, 0, 40)
+Subtitle.Position = UDim2.new(0, 20, 0, 40)
+Subtitle.BackgroundTransparency = 1
+Subtitle.Text = "To use this script, you must be subscribed to @ChrisXTM. Copy the channel link and enter your YouTube username to verify."
+Subtitle.TextColor3 = Color3.fromRGB(180, 180, 180)
+Subtitle.TextSize = 13
+Subtitle.TextWrapped = true
+Subtitle.Font = Enum.Font.Gotham
+Subtitle.Parent = MainFrame
+
+local InputBox = Instance.new("TextBox")
+InputBox.Size = UDim2.new(0.9, 0, 0, 40)
+InputBox.Position = UDim2.new(0.05, 0, 0, 100)
+InputBox.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+InputBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+InputBox.PlaceholderText = "Your YouTube Username..."
+InputBox.Text = ""
+InputBox.Font = Enum.Font.Gotham
+InputBox.TextSize = 14
+InputBox.Parent = MainFrame
+Instance.new("UICorner", InputBox).CornerRadius = UDim.new(0, 6)
+
+-- Swapped Buttons: Confirm on Left (0.05), Copy on Right (0.53)
+local ConfirmBtn = Instance.new("TextButton")
+ConfirmBtn.Size = UDim2.new(0.42, 0, 0, 40)
+ConfirmBtn.Position = UDim2.new(0.05, 0, 0, 155)
+ConfirmBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
+ConfirmBtn.Text = "Verify"
+ConfirmBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ConfirmBtn.Font = Enum.Font.GothamBold
+ConfirmBtn.TextSize = 14
+ConfirmBtn.Parent = MainFrame
+Instance.new("UICorner", ConfirmBtn).CornerRadius = UDim.new(0, 6)
+
+local CopyBtn = Instance.new("TextButton")
+CopyBtn.Size = UDim2.new(0.42, 0, 0, 40)
+CopyBtn.Position = UDim2.new(0.53, 0, 0, 155)
+CopyBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+CopyBtn.Text = "Copy Channel"
+CopyBtn.TextColor3 = Color3.fromRGB(220, 220, 220)
+CopyBtn.Font = Enum.Font.GothamBold
+CopyBtn.TextSize = 14
+CopyBtn.Parent = MainFrame
+Instance.new("UICorner", CopyBtn).CornerRadius = UDim.new(0, 6)
+
+local StatusLabel = Instance.new("TextLabel")
+StatusLabel.Size = UDim2.new(1, 0, 0, 25)
+StatusLabel.Position = UDim2.new(0, 0, 0, 215)
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.Text = "Awaiting verification..."
+StatusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+StatusLabel.TextSize = 13
+StatusLabel.Font = Enum.Font.Gotham
+StatusLabel.Parent = MainFrame
+
+-- Logic
+local hasClickedCopy = false
+local isVerified = false
+local isChecking = false
+
+CopyBtn.MouseButton1Click:Connect(function()
+    if isChecking then return end
+    hasClickedCopy = true
+    
+    if setclipboard then
+        setclipboard(YouTubeChannelURL)
+        StatusLabel.TextColor3 = Color3.fromRGB(100, 200, 255)
+        StatusLabel.Text = "Link copied to clipboard!"
+    else
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
+        StatusLabel.Text = "Executor does not support copying link."
+    end
+end)
+
+ConfirmBtn.MouseButton1Click:Connect(function()
+    if isChecking then return end
+    isChecking = true
+    
+    local text = InputBox.Text
+    local hasInput = string.len(text:gsub("%s+", "")) >= 3
+    
+    -- Visual Feedback for Loading
+    ConfirmBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 120)
+    ConfirmBtn.Text = "Loading..."
+    InputBox.Interactable = false
+    
+    StatusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    StatusLabel.Text = "Checking if you subscribed..."
+    
+    -- Fake Loading Delay
+    task.wait(2.5)
+    
+    if hasClickedCopy and hasInput then
+        -- Success
+        StatusLabel.TextColor3 = Color3.fromRGB(50, 220, 50)
+        StatusLabel.Text = "Done"
+        ConfirmBtn.Text = "Success!"
+        ConfirmBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+        
+        task.wait(1)
+        
+        -- Close Animation
+        TweenService:Create(MainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Position = UDim2.new(0.5, -210, 1.5, 0)}):Play()
+        task.wait(0.5)
+        VerifyGui:Destroy()
+        isVerified = true
+    else
+        -- Failed
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 75, 75)
+        if not hasClickedCopy then
+            StatusLabel.Text = "Failed: You must click 'Copy Channel' first."
+        else
+            StatusLabel.Text = "Failed: Invalid username provided."
+        end
+        
+        ConfirmBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
+        ConfirmBtn.Text = "Verify"
+        InputBox.Interactable = true
+        isChecking = false
+    end
+end)
+
+-- HALTS THE ENTIRE SCRIPT UNTIL VERIFIED
+repeat task.wait(0.1) until isVerified
+
+--=============================================================================
+-- MAIN SCRIPT (ONLY LOADS IF VERIFIED)
+--=============================================================================
+
+local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
@@ -186,7 +355,6 @@ local Window = Rayfield:CreateWindow({
 --  TAB 1: BACK DASH
 -- ==========================================
 local DashTab = Window:CreateTab("Back Dash", 4483362458)
-
 DashTab:CreateSection("Target Management")
 
 local targetParagraph = DashTab:CreateParagraph({
@@ -246,7 +414,6 @@ DashTab:CreateParagraph({
 --  TAB 2: HEROES BATTLEGROUNDS SUITE
 -- ==========================================
 local HBGTab = Window:CreateTab("Inf Dashes + OP Aimlock", 4483362458)
-
 HBGTab:CreateSection("Player Target Selector")
 
 local hbgTargetParagraph = HBGTab:CreateParagraph({
@@ -349,7 +516,6 @@ HBGTab:CreateToggle({
 --  TAB 3: SETTINGS & CREDITS
 -- ==========================================
 local SettingsTab = Window:CreateTab("Settings", 4483362458)
-
 SettingsTab:CreateSection("Hub Configuration")
 
 SettingsTab:CreateKeybind({
@@ -369,7 +535,6 @@ local creditParagraph = SettingsTab:CreateParagraph({
     Content = ""
 })
 
--- Rainbow Text Effect for Credits
 task.spawn(function()
     local text = "Created By @ChrisXTM"
     local offset = 0
@@ -494,21 +659,13 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed or UserInputService:GetFocusedTextBox() then return end
     
     if input.KeyCode == Enum.KeyCode.Q and autoBackdashEnabled and not isDashing then
-        -- Cancel auto back-dash if user is holding S (Backwards) or Down Arrow
         local isPressingS = UserInputService:IsKeyDown(Enum.KeyCode.S) or UserInputService:IsKeyDown(Enum.KeyCode.Down)
-        if isPressingS then
-            return
-        end
+        if isPressingS then return end
 
         local myChar = player.Character or player.CharacterAdded:Wait()
         
-        if isCharacterStunned(myChar) then
-            return
-        end
-        
-        if not currentTarget or not currentTarget.Parent then
-            return
-        end
+        if isCharacterStunned(myChar) then return end
+        if not currentTarget or not currentTarget.Parent then return end
         
         local targetHum = currentTarget:FindFirstChildOfClass("Humanoid")
         if not targetHum or targetHum.Health <= 0 then
@@ -535,80 +692,56 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
             local initialRel = startPos - targetPos
             local currentDistance = initialRel.Magnitude
             
-            if currentDistance > maxDashDistance or currentDistance < 1 then
-                return 
-            end
+            if currentDistance > maxDashDistance or currentDistance < 1 then return end
             
             isDashing = true
-            
             local distanceBehind = 4.5
             
-            -- Direction Input Check (A = Left, D = Right)
             local isPressingA = UserInputService:IsKeyDown(Enum.KeyCode.A) or UserInputService:IsKeyDown(Enum.KeyCode.Left)
             local isPressingD = UserInputService:IsKeyDown(Enum.KeyCode.D) or UserInputService:IsKeyDown(Enum.KeyCode.Right)
 
             local chosenTrack = frontTrack
-            if isPressingA then
-                chosenTrack = leftTrack
-            elseif isPressingD then
-                chosenTrack = rightTrack
-            end
+            if isPressingA then chosenTrack = leftTrack
+            elseif isPressingD then chosenTrack = rightTrack end
             
-            if chosenTrack then
-                chosenTrack:Play()
-            end
+            if chosenTrack then chosenTrack:Play() end
             
             hum.AutoRotate = false
             
             local dashDuration = 0.55
             local startTime = tick()
-            
-            -- Initial player angle relative to the target on XZ plane
             local startAngle = math.atan2(initialRel.Z, initialRel.X)
             
             local connection
             connection = RunService.RenderStepped:Connect(function()
                 local elapsed = tick() - startTime
                 local progress = math.clamp(elapsed / dashDuration, 0, 1)
-                
-                -- Smooth sine easing curve
                 local easedProgress = math.sin(progress * (math.pi / 2))
                 
                 if targetPart and targetPart.Parent and myHRP and myHRP.Parent then
                     local currentTargetPos = Vector3.new(targetPart.Position.X, lockedY, targetPart.Position.Z)
                     local targetLook = targetPart.CFrame.LookVector
                     
-                    -- Back vector relative to enemy facing direction
                     local backVector = -Vector3.new(targetLook.X, 0, targetLook.Z).Unit
                     local endAngle = math.atan2(backVector.Z, backVector.X)
-                    
                     local deltaAngle = endAngle - startAngle
                     
-                    -- Normalize angle range between -pi and pi
                     while deltaAngle > math.pi do deltaAngle = deltaAngle - (math.pi * 2) end
                     while deltaAngle < -math.pi do deltaAngle = deltaAngle + (math.pi * 2) end
                     
-                    -- Orbit directions according to key input
                     if isPressingA then
-                        if deltaAngle < 0 then
-                            deltaAngle = deltaAngle + (math.pi * 2)
-                        end
+                        if deltaAngle < 0 then deltaAngle = deltaAngle + (math.pi * 2) end
                     elseif isPressingD then
-                        if deltaAngle > 0 then
-                            deltaAngle = deltaAngle - (math.pi * 2)
-                        end
+                        if deltaAngle > 0 then deltaAngle = deltaAngle - (math.pi * 2) end
                     end
                     
-                    -- Calculate current angle & radius
                     local currentAngle = startAngle + (deltaAngle * easedProgress)
                     local currentRadius = currentDistance + ((distanceBehind - currentDistance) * easedProgress)
                     
-                    -- Compute position on arc
                     local offsetX = math.cos(currentAngle) * currentRadius
                     local offsetZ = math.sin(currentAngle) * currentRadius
                     local calculatedPos = currentTargetPos + Vector3.new(offsetX, 0, offsetZ)
                     
-                    -- Update CFrame facing the opponent, keeping height strictly locked
                     myHRP.CFrame = CFrame.lookAt(calculatedPos, currentTargetPos)
                 end
                 
