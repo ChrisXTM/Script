@@ -4,14 +4,24 @@
     Original Script by ChrisXTM | Orbit Arc Back Dash Update
 --]]
 
---// STRICT YOUTUBE VERIFICATION SYSTEM
+--// SERVICES & CORE SETUP
 local CoreGui = game:GetService("CoreGui")
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 
+local LocalPlayer = Players.LocalPlayer
 local YouTubeChannelURL = "https://www.youtube.com/@ChrisXTM?sub_confirmation=1"
 
--- Create UI
+-- Execution Counter (Persistente por sesión)
+getgenv().XTM_ExecCount = (getgenv().XTM_ExecCount or 0) + 1
+local execCount = getgenv().XTM_ExecCount
+
+-- Executor Detector
+local executorName = (identifyexecutor and identifyexecutor()) or (getexecutorname and getexecutorname()) or "Unknown Executor"
+
+--// STRICT YOUTUBE VERIFICATION SYSTEM (GUI)
 local VerifyGui = Instance.new("ScreenGui")
 VerifyGui.Name = "XTM_YouTube_Verify"
 VerifyGui.ResetOnSpawn = false
@@ -37,12 +47,25 @@ local Corner = Instance.new("UICorner")
 Corner.CornerRadius = UDim.new(0, 8)
 Corner.Parent = MainFrame
 
+-- Close Button (Boton para cerrar la ventana)
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Size = UDim2.new(0, 28, 0, 28)
+CloseBtn.Position = UDim2.new(1, -34, 0, 8)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+CloseBtn.Text = "✕"
+CloseBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.TextSize = 14
+CloseBtn.Parent = MainFrame
+Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 6)
+
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 40)
+Title.Size = UDim2.new(1, -40, 0, 40)
+Title.Position = UDim2.new(0, 10, 0, 0)
 Title.BackgroundTransparency = 1
 Title.Text = " VERIFICATION REQUIRED "
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.TextSize = 20
+Title.TextSize = 18
 Title.Font = Enum.Font.GothamBold
 Title.Parent = MainFrame
 
@@ -52,14 +75,14 @@ Subtitle.Position = UDim2.new(0, 20, 0, 40)
 Subtitle.BackgroundTransparency = 1
 Subtitle.Text = "To use this script, you must be subscribed to @ChrisXTM. Copy the channel link and enter your YouTube username to verify."
 Subtitle.TextColor3 = Color3.fromRGB(180, 180, 180)
-Subtitle.TextSize = 13
+Subtitle.TextSize = 12
 Subtitle.TextWrapped = true
 Subtitle.Font = Enum.Font.Gotham
 Subtitle.Parent = MainFrame
 
 local InputBox = Instance.new("TextBox")
 InputBox.Size = UDim2.new(0.9, 0, 0, 40)
-InputBox.Position = UDim2.new(0.05, 0, 0, 100)
+InputBox.Position = UDim2.new(0.05, 0, 0, 95)
 InputBox.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
 InputBox.TextColor3 = Color3.fromRGB(255, 255, 255)
 InputBox.PlaceholderText = "Your YouTube Username..."
@@ -69,10 +92,9 @@ InputBox.TextSize = 14
 InputBox.Parent = MainFrame
 Instance.new("UICorner", InputBox).CornerRadius = UDim.new(0, 6)
 
--- Swapped Buttons: Confirm on Left (0.05), Copy on Right (0.53)
 local ConfirmBtn = Instance.new("TextButton")
 ConfirmBtn.Size = UDim2.new(0.42, 0, 0, 40)
-ConfirmBtn.Position = UDim2.new(0.05, 0, 0, 155)
+ConfirmBtn.Position = UDim2.new(0.05, 0, 0, 150)
 ConfirmBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
 ConfirmBtn.Text = "Verify"
 ConfirmBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -83,7 +105,7 @@ Instance.new("UICorner", ConfirmBtn).CornerRadius = UDim.new(0, 6)
 
 local CopyBtn = Instance.new("TextButton")
 CopyBtn.Size = UDim2.new(0.42, 0, 0, 40)
-CopyBtn.Position = UDim2.new(0.53, 0, 0, 155)
+CopyBtn.Position = UDim2.new(0.53, 0, 0, 150)
 CopyBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
 CopyBtn.Text = "Copy Channel"
 CopyBtn.TextColor3 = Color3.fromRGB(220, 220, 220)
@@ -94,19 +116,27 @@ Instance.new("UICorner", CopyBtn).CornerRadius = UDim.new(0, 6)
 
 local StatusLabel = Instance.new("TextLabel")
 StatusLabel.Size = UDim2.new(1, 0, 0, 25)
-StatusLabel.Position = UDim2.new(0, 0, 0, 215)
+StatusLabel.Position = UDim2.new(0, 0, 0, 210)
 StatusLabel.BackgroundTransparency = 1
 StatusLabel.Text = "Awaiting verification..."
 StatusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-StatusLabel.TextSize = 13
+StatusLabel.TextSize = 12
 StatusLabel.Font = Enum.Font.Gotham
 StatusLabel.Parent = MainFrame
 
--- Logic
+-- Verification Variables
 local hasClickedCopy = false
 local isVerified = false
 local isChecking = false
+local wasClosed = false
 
+-- Close Button Action
+CloseBtn.MouseButton1Click:Connect(function()
+    wasClosed = true
+    VerifyGui:Destroy()
+end)
+
+-- Copy Channel Action
 CopyBtn.MouseButton1Click:Connect(function()
     if isChecking then return end
     hasClickedCopy = true
@@ -121,69 +151,69 @@ CopyBtn.MouseButton1Click:Connect(function()
     end
 end)
 
+-- Confirm Verification Action (5-Second Wait)
 ConfirmBtn.MouseButton1Click:Connect(function()
     if isChecking then return end
-    isChecking = true
     
     local text = InputBox.Text
-    local hasInput = string.len(text:gsub("%s+", "")) >= 3
+    local cleanText = string.gsub(text, "%s+", "")
+    local hasInput = string.len(cleanText) >= 3
     
-    -- Visual Feedback for Loading
+    if not hasClickedCopy then
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 75, 75)
+        StatusLabel.Text = "Failed: You must click 'Copy Channel' first."
+        return
+    end
+    
+    if not hasInput then
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 75, 75)
+        StatusLabel.Text = "Failed: Invalid username provided."
+        return
+    end
+
+    isChecking = true
     ConfirmBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 120)
-    ConfirmBtn.Text = "Loading..."
+    ConfirmBtn.Text = "Verifying..."
     InputBox.Interactable = false
     
     StatusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    StatusLabel.Text = "Checking if you subscribed..."
+    StatusLabel.Text = "Checking subscription... (Please wait 5s)"
     
-    -- Fake Loading Delay
-    task.wait(2.5)
-    
-    if hasClickedCopy and hasInput then
-        -- Success
+    task.spawn(function()
+        -- Tiempo de espera de 5 segundos solicitado
+        task.wait(5)
+        
+        if wasClosed then return end
+        
         StatusLabel.TextColor3 = Color3.fromRGB(50, 220, 50)
-        StatusLabel.Text = "Done"
+        StatusLabel.Text = "✅ Success! Verified."
         ConfirmBtn.Text = "Success!"
         ConfirmBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
         
         task.wait(1)
         
-        -- Close Animation
         TweenService:Create(MainFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Position = UDim2.new(0.5, -210, 1.5, 0)}):Play()
         task.wait(0.5)
         VerifyGui:Destroy()
         isVerified = true
-    else
-        -- Failed
-        StatusLabel.TextColor3 = Color3.fromRGB(255, 75, 75)
-        if not hasClickedCopy then
-            StatusLabel.Text = "Failed: You must click 'Copy Channel' first."
-        else
-            StatusLabel.Text = "Failed: Invalid username provided."
-        end
-        
-        ConfirmBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
-        ConfirmBtn.Text = "Verify"
-        InputBox.Interactable = true
-        isChecking = false
-    end
+    end)
 end)
 
--- HALTS THE ENTIRE SCRIPT UNTIL VERIFIED
-repeat task.wait(0.1) until isVerified
+-- PAUSA EL SCRIPT HASTA QUE SE VERIFIQUE O SE CIERRE
+repeat task.wait(0.1) until isVerified or wasClosed
+
+if not isVerified then 
+    return -- Detiene la ejecución si el usuario cerró la ventana sin verificarse
+end
 
 --=============================================================================
--- MAIN SCRIPT (ONLY LOADS IF VERIFIED)
+-- MAIN SCRIPT (SOLO SE EJECUTA SI FUE VERIFICADO)
 --=============================================================================
 
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
+local mouse = LocalPlayer:GetMouse()
+local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 
-local player = Players.LocalPlayer
-local mouse = player:GetMouse()
-local character = player.Character or player.CharacterAdded:Wait()
-
---// GLOBAL STATE VARIABLES
+-- Global State Variables
 local currentTarget = nil
 local selectedBodyPart = "HumanoidRootPart"
 
@@ -197,7 +227,6 @@ local aimlockEnabled = false
 local infDashesEnabled = false
 local heartbeatConnection = nil
 
--- Folders to remove for Inf Dashes
 local foldersToDelete = {
     "DASHCD", "SideDashCounter", "ForwardDashCD", "DashPunchCD",
     "DontAllowBlocking", "RecentSideDash", "TRUECANTSIDEDASH",
@@ -206,7 +235,7 @@ local foldersToDelete = {
     "M1CD", "AttackCD", "SwingCD", "PunchCD", "HitCooldown", "IsAttacking"
 }
 
---// ANIMATION OBJECTS (DASHES)
+-- Animations
 local frontDashAnim = Instance.new("Animation")
 frontDashAnim.AnimationId = "rbxassetid://13917336710"
 
@@ -218,7 +247,6 @@ rightDashAnim.AnimationId = "rbxassetid://100087324592640"
 
 local frontTrack, leftTrack, rightTrack
 
---// LOAD ANIMATION TRACKS
 local function loadTracks(char)
     if not char then return end
     local hum = char:WaitForChild("Humanoid", 10)
@@ -230,15 +258,15 @@ local function loadTracks(char)
     end
 end
 
-if player.Character then loadTracks(player.Character) end
-player.CharacterAdded:Connect(function(char)
+if LocalPlayer.Character then loadTracks(LocalPlayer.Character) end
+LocalPlayer.CharacterAdded:Connect(function(char)
     character = char
     loadTracks(char)
 end)
 
---// HELPER & UTILITY FUNCTIONS
+-- Helper Functions
 local function CleanUpGyro()
-    local myChar = player.Character
+    local myChar = LocalPlayer.Character
     if myChar then
         local myHRP = myChar:FindFirstChild("HumanoidRootPart")
         if myHRP then
@@ -273,11 +301,8 @@ local function isLocalIncapacitated(myChar, myHum, myHRP)
         return true
     end
 
-    if myHRP then
-        local velocity = myHRP.AssemblyLinearVelocity
-        if velocity.Magnitude > 65 then
-            return true
-        end
+    if myHRP and myHRP.AssemblyLinearVelocity.Magnitude > 65 then
+        return true
     end
 
     local stunAttrs = {"Stunned", "Stun", "Ragdoll", "Knocked", "KnockedDown", "KnockedOut", "Hit", "Combo"}
@@ -296,7 +321,6 @@ local function isCharacterStunned(char)
 
     local hum = char:FindFirstChildOfClass("Humanoid")
     if not hum or hum.Health <= 0 then return true end
-    
     if hum.PlatformStand or hum.Sit then return true end
     
     local state = hum:GetState()
@@ -310,19 +334,6 @@ local function isCharacterStunned(char)
     for _, attrName in ipairs(stunAttributes) do
         if char:GetAttribute(attrName) == true then
             return true
-        end
-    end
-
-    for _, child in ipairs(char:GetChildren()) do
-        if child:IsA("ValueBase") then
-            local nameLower = string.lower(child.Name)
-            if string.find(nameLower, "stun") or string.find(nameLower, "ragdoll") or string.find(nameLower, "knocked") or string.find(nameLower, "lying") then
-                if child:IsA("BoolValue") and child.Value == true then
-                    return true
-                elseif (child:IsA("NumberValue") or child:IsA("IntValue")) and child.Value > 0 then
-                    return true
-                end
-            end
         end
     end
 
@@ -352,7 +363,41 @@ local Window = Rayfield:CreateWindow({
 })
 
 -- ==========================================
---  TAB 1: BACK DASH
+--  TAB 1: USER PROFILE & INFORMATION
+-- ==========================================
+local ProfileTab = Window:CreateTab("User Profile", 4483362458)
+
+ProfileTab:CreateSection("Account Information")
+
+ProfileTab:CreateParagraph({
+    Title = "Player Username:",
+    Content = LocalPlayer.Name .. " (@" .. LocalPlayer.DisplayName .. ")"
+})
+
+ProfileTab:CreateParagraph({
+    Title = "Roblox User ID:",
+    Content = tostring(LocalPlayer.UserId)
+})
+
+ProfileTab:CreateSection("Session & Execution Details")
+
+ProfileTab:CreateParagraph({
+    Title = "Verification Status:",
+    Content = "✅ Verification Completed"
+})
+
+ProfileTab:CreateParagraph({
+    Title = "Times Executed:",
+    Content = "Script used " .. tostring(execCount) .. " time(s) in this session."
+})
+
+ProfileTab:CreateParagraph({
+    Title = "Active Executor:",
+    Content = executorName
+})
+
+-- ==========================================
+--  TAB 2: BACK DASH
 -- ==========================================
 local DashTab = Window:CreateTab("Back Dash", 4483362458)
 DashTab:CreateSection("Target Management")
@@ -411,7 +456,7 @@ DashTab:CreateParagraph({
 })
 
 -- ==========================================
---  TAB 2: HEROES BATTLEGROUNDS SUITE
+--  TAB 3: HEROES BATTLEGROUNDS SUITE
 -- ==========================================
 local HBGTab = Window:CreateTab("Inf Dashes + OP Aimlock", 4483362458)
 HBGTab:CreateSection("Player Target Selector")
@@ -430,7 +475,7 @@ HBGTab:CreateInput({
             local textLower = string.lower(Text)
             local found = nil
             for _, p in pairs(Players:GetPlayers()) do
-                if p ~= player and string.find(string.lower(p.Name), textLower) then
+                if p ~= LocalPlayer and string.find(string.lower(p.Name), textLower) then
                     found = p.Character
                     break
                 end
@@ -483,7 +528,7 @@ HBGTab:CreateToggle({
 local function removeFolders()
     local liveFolder = workspace:FindFirstChild("Live")
     if liveFolder then
-        local targetParent = liveFolder:FindFirstChild(player.Name)
+        local targetParent = liveFolder:FindFirstChild(LocalPlayer.Name)
         if targetParent then
             for _, folderName in ipairs(foldersToDelete) do
                 local folder = targetParent:FindFirstChild(folderName)
@@ -513,7 +558,7 @@ HBGTab:CreateToggle({
 })
 
 -- ==========================================
---  TAB 3: SETTINGS & CREDITS
+--  TAB 4: SETTINGS & CREDITS
 -- ==========================================
 local SettingsTab = Window:CreateTab("Settings", 4483362458)
 SettingsTab:CreateSection("Hub Configuration")
@@ -562,6 +607,22 @@ task.spawn(function()
 end)
 
 -- ==========================================
+--  PERIODIC NOTIFICATION (EVERY 20 MINUTES)
+-- ==========================================
+task.spawn(function()
+    while task.wait(1200) do -- 1200 segundos = 20 minutos
+        pcall(function()
+            Rayfield:Notify({
+                Title = "🔔 Remember to Subscribe!",
+                Content = "Don't forget to subscribe to @ChrisXTM to keep supporting script updates!",
+                Duration = 6,
+                Image = 4483362458
+            })
+        end)
+    end
+end)
+
+-- ==========================================
 --  RIGHT-CLICK TARGET SELECTION
 -- ==========================================
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
@@ -601,10 +662,10 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 -- ==========================================
---  AIMLOCK UPDATE LOOP (HEROES BG)
+--  AIMLOCK UPDATE LOOP
 -- ==========================================
 RunService.RenderStepped:Connect(function()
-    local myChar = player.Character
+    local myChar = LocalPlayer.Character
     if not myChar then return end
     
     local myHRP = myChar:FindFirstChild("HumanoidRootPart")
@@ -662,7 +723,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         local isPressingS = UserInputService:IsKeyDown(Enum.KeyCode.S) or UserInputService:IsKeyDown(Enum.KeyCode.Down)
         if isPressingS then return end
 
-        local myChar = player.Character or player.CharacterAdded:Wait()
+        local myChar = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
         
         if isCharacterStunned(myChar) then return end
         if not currentTarget or not currentTarget.Parent then return end
